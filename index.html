@@ -266,6 +266,8 @@ body.presenter #presPanel{display:block}
         <button class="vBtn" id="voteDown">👎<span id="downN">0</span></button>
       </div>
 
+      <div id="mLink" style="font-size:11px;color:var(--muted);text-align:center;margin-top:8px"></div>
+
       <div id="presPanel">
         <div class="card">
           <div class="kicker" data-i="presMode">PRESENTER MODE</div>
@@ -363,6 +365,7 @@ body.presenter #presPanel{display:block}
         <div id="tTally"></div>
         <div class="pc" id="tPeers">—</div>
         <div class="pl" id="tPeersL">connected</div>
+        <div class="pl" id="tLink" style="margin-top:4px">…</div>
         <div class="pg" id="tProg">1 / 11</div>
       </div>
     </div>
@@ -501,7 +504,7 @@ const I18N = {
   live:"LIVE", offline:"offline", connected:"connected", browsing:"browsing freely",
   presOn:"You're live: changing slides here changes them on every phone that follows along. Keep this #presenter link to yourself.",
   presOff:"Connecting to the live channel… If this message stays, slides here change only on this screen.",
-  tHint:"Scan to follow on your phone · slides, papers & live reactions", tConn:"connected",
+  tHint:"Scan to follow on your phone · slides, papers & live reactions", tConn:"people connected",
   evLine:"MEET NOVA'S NEW TALENTS · 18 NOV 2026 · LISBON"},
  pt:{onScreen:"em exibição agora", backLive:"voltar ao vivo", presMode:"MODO APRESENTADOR", pPrev:"Anterior", pNext:"Seguinte",
   papersT:"Artigos desta apresentação", papersS:"Tudo o que é citado nos slides, com links diretos. Acesso aberto sempre que disponível.",
@@ -518,7 +521,7 @@ const I18N = {
   live:"AO VIVO", offline:"offline", connected:"ligados", browsing:"a navegar livre",
   presOn:"Está em direto: mudar de slide aqui muda em todos os telemóveis que estiverem a acompanhar. Guarde o link #presenter só para si.",
   presOff:"A ligar ao canal em direto… Se esta mensagem persistir, os slides aqui mudam apenas neste ecrã.",
-  tHint:"Aponte a câmara para acompanhar no telemóvel · slides, artigos e reações ao vivo", tConn:"ligados",
+  tHint:"Aponte a câmara para acompanhar no telemóvel · slides, artigos e reações ao vivo", tConn:"pessoas ligadas",
   evLine:"MEET NOVA'S NEW TALENTS · 18 NOV 2026 · LISBOA"}
 };
 let lang = "en";
@@ -543,37 +546,54 @@ const isPres  = location.hash === "#presenter";
 if (isTelao) document.body.classList.add("telao");
 if (isPres)  document.body.classList.add("presenter");
 
-/* ===== live layer B: public MQTT broker (used on neutral hosting, where claude.* isn't available) ===== */
+/* ===== live layer B: several public MQTT brokers at once (works on neutral hosting) ===== */
 const MQ_TOPIC = "nova-vp-glass-atlas-k7q2";
-const MQ_BROKERS = ["wss://broker.emqx.io:8084/mqtt","wss://broker.hivemq.com:8884/mqtt","wss://test.mosquitto.org:8081"];
+const MQ_BROKERS = [
+  {n:"eclipse", u:"wss://mqtt.eclipseprojects.io:443/mqtt"},   /* port 443: passes most venue wifi */
+  {n:"emqx",    u:"wss://broker.emqx.io:8084/mqtt"},
+  {n:"hivemq",  u:"wss://broker.hivemq.com:8884/mqtt"}
+];
 const myId = "u" + Math.random().toString(36).slice(2,10);
-let mq = null, mqOn = false;
-const mqPeers = {};           // id -> {ts, v}
-let lastFloat = 0;
-function mqttConnect(i){
-  i = i||0;
-  if (room || mqOn || typeof mqtt === "undefined" || i >= MQ_BROKERS.length) return;
-  let c, settled = false;
-  try{
-    c = mqtt.connect(MQ_BROKERS[i], {clientId:"psg_"+myId+"_"+i, connectTimeout:6000, keepalive:30, clean:true, reconnectPeriod:5000});
-  }catch(e){ return mqttConnect(i+1); }
-  const giveUp = setTimeout(()=>{ if(!settled){ settled=true; try{c.end(true);}catch(e){} mqttConnect(i+1); } }, 8000);
-  c.on("connect", ()=>{
-    if (mqOn) return;
-    settled = true; clearTimeout(giveUp);
-    mq = c; mqOn = true;
-    try{ c.subscribe(MQ_TOPIC+"/#"); }catch(e){}
-    mqHeartbeat(true);
-    if (isPres){ canEmit = true; setPresStatus(); mqSync(cur); }
-    updateLiveChip();
+const mqClients = [];          // {n, c, up}
+let mqOn = false;              // true when at least one broker is connected
+const mqPeers = {};            // id -> {ts, v}
+const mqSeenMsg = {};          // dedupe: the same message arrives once per broker
+let lastFloat = 0, mqMsgN = 0;
+function mqStatusRender(){
+  const up = mqClients.filter(x=>x.up).map(x=>x.n);
+  mqOn = up.length>0;
+  const txt = mqOn ? ("● "+up.join(" · ")) : "○ sem ligação ao canal ao vivo";
+  const el = document.getElementById("tLink"); if(el){ el.textContent = txt; el.style.color = mqOn? "var(--teal)" : "var(--coral)"; }
+  const el2 = document.getElementById("mLink"); if(el2){ el2.textContent = txt; }
+  updateLiveChip();
+}
+function mqttConnect(){
+  if (room || typeof mqtt === "undefined"){ mqStatusRender(); return; }
+  MQ_BROKERS.forEach(b=>{
+    const slot = {n:b.n, c:null, up:false}; mqClients.push(slot);
+    try{
+      slot.c = mqtt.connect(b.u, {clientId:"psg_"+myId+"_"+b.n, connectTimeout:8000, keepalive:30, clean:true, reconnectPeriod:4000});
+    }catch(e){ return; }
+    slot.c.on("connect", ()=>{
+      slot.up = true;
+      try{ slot.c.subscribe(MQ_TOPIC+"/#"); }catch(e){}
+      mqStatusRender(); mqHeartbeat(true);
+      if (isPres){ canEmit = true; setPresStatus(); mqSync(cur); }
+    });
+    slot.c.on("close", ()=>{ slot.up = false; mqStatusRender(); });
+    slot.c.on("error", ()=>{ slot.up = false; mqStatusRender(); });
+    slot.c.on("message", (t,msg)=>{ mqHandle(String(t).slice(MQ_TOPIC.length+1), msg); });
   });
-  c.on("message", (t,msg)=>{ mqHandle(String(t).slice(MQ_TOPIC.length+1), msg); });
-  c.on("error", ()=>{ if(!settled){ settled=true; clearTimeout(giveUp); try{c.end(true);}catch(e){} mqttConnect(i+1); } });
 }
 function mqPub(ch,obj,retain){
   if(!mqOn) return false;
-  try{ mq.publish(MQ_TOPIC+"/"+ch, JSON.stringify(obj), {qos:0, retain:!!retain}); return true; }
-  catch(e){ return false; }
+  obj.m = myId + "-" + (++mqMsgN);
+  const s = JSON.stringify(obj); let sent = false;
+  mqClients.forEach(x=>{
+    if(!x.up) return;
+    try{ x.c.publish(MQ_TOPIC+"/"+ch, s, {qos:0, retain:!!retain}); sent = true; }catch(e){}
+  });
+  return sent;
 }
 let hbTimer=null;
 function mqHeartbeat(now){
@@ -589,22 +609,24 @@ function mqRecount(){
     if(mqPeers[k].v==="up")up++; else if(mqPeers[k].v==="down")down++;
   }
   peerCount=n; peerVotes={up:up,down:down};
-  document.getElementById("tPeers").textContent=peerCount;
+  const tp=document.getElementById("tPeers"); if(tp) tp.textContent=peerCount;
   renderVotes(); updateLiveChip();
 }
 setInterval(()=>{ if(mqOn) mqRecount(); }, 8000);
 function mqHandle(ch,msg){
   let d; try{ d=JSON.parse(msg.toString()); }catch(e){ return; }
   if(!d) return;
+  if(d.m){ if(mqSeenMsg[d.m]) return; mqSeenMsg[d.m]=1; }
   if(ch==="hb" && d.id){ mqPeers[d.id]={ts:Date.now(), v:d.v}; mqRecount(); }
   else if(ch==="react" && d.id!==myId){
-    const t=Date.now();
     tally(String(d.e||""));
+    const t=Date.now();
     if(t-lastFloat>120){ lastFloat=t; floatEmoji(String(d.e||"👏").slice(0,8)); }
   }
   else if(ch==="sync" && !isPres && typeof d.slide==="number"){
     if(!d.ts || (Date.now()-d.ts)<30*60*1000) onLiveSlide(d.slide);
-  }}
+  }
+}
 function mqSync(i){ mqPub("sync",{slide:i, ts:Date.now(), id:myId}, true); }
 
 /* ================= stage ================= */
@@ -878,7 +900,7 @@ document.getElementById("langBtn").addEventListener("click",()=>{
 
 /* ================= live wiring ================= */
 async function connect(){
-  if(!(window.claude && window.claude.use)){ mqttConnect(0); return; }
+  if(!(window.claude && window.claude.use)){ mqttConnect(); return; }
   try{
     const r = await claude.use("room");
     if(r){
@@ -912,7 +934,7 @@ async function connect(){
       }catch(e){}
     }
   }catch(e){}
-  if(!room) mqttConnect(0); /* signed-out viewer on claude hosting: try the public channel */
+  if(!room) mqttConnect(); /* signed-out viewer on claude hosting: try the public channel */
 }
 setPresStatus();
 window.addEventListener("hashchange",()=>location.reload());
