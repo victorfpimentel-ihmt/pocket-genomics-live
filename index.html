@@ -122,18 +122,21 @@ main{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;p
 .vBtn span{font-size:12.5px;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums}
 .vBtn.sel{border-color:var(--gold);background:rgba(242,179,61,.12)}
 #floatLayer{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:60}
-.fEmoji{position:absolute;bottom:110px;font-size:30px;animation:rise 2.6s ease-out forwards}
+.fEmoji{position:absolute;bottom:110px;font-size:34px;animation:rise 4.6s ease-out forwards;will-change:transform,opacity;filter:drop-shadow(0 4px 10px rgba(0,0,0,.55))}
 @keyframes rise{
-  0%{transform:translateY(0) scale(.7);opacity:0}
-  12%{opacity:1}
-  100%{transform:translateY(-62vh) translateX(var(--dx,0)) scale(1.25);opacity:0}
+  0%{transform:translateY(0) scale(.6);opacity:0}
+  8%{opacity:1}
+  70%{opacity:1}
+  100%{transform:translateY(-68vh) translateX(var(--dx,0)) scale(1.3);opacity:0}
 }
-body.telao .fEmoji{font-size:clamp(44px,5.2vw,84px);bottom:16vh}
+@keyframes pop{0%{transform:scale(1)}40%{transform:scale(1.45)}100%{transform:scale(1)}}
+body.telao .fEmoji{font-size:clamp(56px,6.4vw,104px);bottom:18vh}
+#tTally span.pop{animation:pop .45s ease-out}
 #tTally{display:flex;gap:clamp(10px,1.4vw,22px);justify-content:flex-end;margin-bottom:6px}
 #tTally span{font-size:clamp(14px,1.6vw,24px);font-weight:700;font-variant-numeric:tabular-nums;color:var(--text)}
 #tTally i{font-style:normal;margin-right:4px}
 @media (prefers-reduced-motion: reduce){
-  .fEmoji{animation:fadeOnly 1.2s ease-out forwards}
+  body:not(.telao) .fEmoji{animation:fadeOnly 1.6s ease-out forwards}
   @keyframes fadeOnly{0%{opacity:.9}100%{opacity:0}}
   .chip.live .dot{animation:none}
 }
@@ -621,7 +624,7 @@ function mqHandle(ch,msg){
   else if(ch==="react" && d.id!==myId){
     tally(String(d.e||""));
     const t=Date.now();
-    if(t-lastFloat>120){ lastFloat=t; floatEmoji(String(d.e||"👏").slice(0,8)); }
+    if(t-lastFloat>40){ lastFloat=t; floatEmoji(String(d.e||"👏").slice(0,8)); }
   }
   else if(ch==="sync" && !isPres && typeof d.slide==="number"){
     if(!d.ts || (Date.now()-d.ts)<30*60*1000) onLiveSlide(d.slide);
@@ -753,7 +756,7 @@ function floatEmoji(e){
   el.style.left=(8+Math.random()*84)+"%";
   el.style.setProperty("--dx",(Math.random()*60-30)+"px");
   layer.appendChild(el);
-  setTimeout(()=>el.remove(),2700);
+  setTimeout(()=>el.remove(),4800);
 }
 
 /* running count of each reaction, shown on the big screen */
@@ -762,7 +765,7 @@ function tally(e){
   if(!isTelao || !(e in tallyN)) return;
   tallyN[e]++;
   document.getElementById("tTally").innerHTML =
-    Object.keys(tallyN).map(k=>'<span><i>'+k+'</i>'+tallyN[k]+'</span>').join("");
+    Object.keys(tallyN).map(k=>'<span'+(k===e?' class="pop"':'')+'><i>'+k+'</i>'+tallyN[k]+'</span>').join("");
 }
 let myPresence={};
 function pushPresence(patch){
