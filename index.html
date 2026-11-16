@@ -1,0 +1,1020 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pocket-sized Genomics Live</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* deck-inherited palette · layout: phone-first stage + bottom tabs, telão & presenter modes on hash */
+  --bg:#0A1322; --panel:#121F35; --panel2:#0E1930; --line:#24395C;
+  --text:#E9EFF8; --muted:#8FA3BF; --coral:#FF4D5E; --teal:#35D0C0; --gold:#F2B33D;
+  --font:"Schibsted Grotesk",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:var(--bg);color:var(--text);font-family:var(--font);
+  -webkit-font-smoothing:antialiased;overscroll-behavior-y:contain;
+}
+button{font-family:inherit;color:inherit;background:none;border:none;cursor:pointer}
+a{color:var(--teal);text-decoration:none}
+a:hover{text-decoration:underline}
+img{max-width:100%;display:block}
+:focus-visible{outline:2px solid var(--teal);outline-offset:2px;border-radius:6px}
+
+/* ---------- shell ---------- */
+#app{height:100%;display:flex;flex-direction:column;max-width:760px;margin:0 auto;position:relative}
+header{
+  display:flex;align-items:center;gap:10px;
+  padding:calc(10px + env(safe-area-inset-top)) 16px 10px;
+}
+.brand{min-width:0;flex:1}
+.brand .ev{font-size:11px;letter-spacing:.08em;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brand h1{font-size:15px;font-weight:700;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brand h1 em{font-style:normal;color:var(--coral)}
+.chip{
+  display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;
+  border:1px solid var(--line);border-radius:999px;padding:5px 10px;color:var(--muted);
+  flex:none;
+}
+.chip .dot{width:7px;height:7px;border-radius:50%;background:var(--muted)}
+.chip.live{color:var(--coral);border-color:rgba(255,77,94,.45)}
+.chip.live .dot{background:var(--coral);animation:pulse 1.6s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+#langBtn{font-size:11px;font-weight:700;border:1px solid var(--line);border-radius:999px;padding:5px 10px;color:var(--muted);flex:none}
+
+main{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding:0 16px 16px}
+.view{display:none}
+.view.on{display:block}
+
+/* ---------- stage ---------- */
+#stageWrap{position:relative;border-radius:14px;overflow:hidden;background:#000;border:1px solid var(--line);touch-action:pan-y}
+#stageWrap img,#stageWrap video{width:100%;aspect-ratio:16/9;object-fit:cover;user-select:none;-webkit-user-drag:none}
+#slideTag{
+  position:absolute;top:10px;left:10px;font-size:11px;font-weight:700;
+  background:rgba(10,19,34,.78);border:1px solid var(--line);border-radius:8px;padding:4px 8px;
+  color:var(--muted);backdrop-filter:blur(4px)
+}
+#liveTag{
+  position:absolute;top:10px;right:10px;display:none;font-size:11px;font-weight:700;
+  background:rgba(255,77,94,.16);border:1px solid rgba(255,77,94,.5);color:var(--coral);
+  border-radius:8px;padding:4px 8px;backdrop-filter:blur(4px)
+}
+#liveTag.on{display:block}
+.navArr{
+  position:absolute;top:50%;transform:translateY(-50%);width:40px;height:56px;
+  display:flex;align-items:center;justify-content:center;font-size:22px;color:#fff;
+  background:rgba(10,19,34,.45);backdrop-filter:blur(2px)
+}
+.navArr:active{background:rgba(10,19,34,.75)}
+#prevB{left:0;border-radius:0 10px 10px 0}
+#nextB{right:0;border-radius:10px 0 0 10px}
+
+.ctrlRow{display:flex;align-items:center;gap:10px;margin-top:10px}
+#prog{font-size:12px;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums;flex:none}
+#dots{flex:1;display:flex;gap:5px;align-items:center}
+#dots button{flex:1;height:4px;border-radius:2px;background:var(--line);padding:0;min-width:0}
+#dots button.cur{background:var(--coral)}
+#dots button.seen{background:#3A517A}
+#followB{
+  display:none;font-size:11px;font-weight:700;border-radius:999px;padding:6px 11px;flex:none;
+  background:rgba(255,77,94,.14);border:1px solid rgba(255,77,94,.5);color:var(--coral)
+}
+#followB.show{display:block}
+
+/* thumbnails */
+#thumbs{display:flex;gap:8px;overflow-x:auto;margin-top:12px;padding-bottom:4px;scrollbar-width:thin}
+#thumbs button{flex:none;width:92px;border-radius:8px;overflow:hidden;border:2px solid transparent;padding:0;opacity:.55}
+#thumbs button.cur{border-color:var(--coral);opacity:1}
+#thumbs img{aspect-ratio:16/9;object-fit:cover}
+
+/* info card */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:14px}
+.kicker{font-size:11px;letter-spacing:.07em;font-weight:700;color:var(--teal);margin-bottom:5px}
+.card h2{font-size:18px;font-weight:700;line-height:1.25;text-wrap:balance}
+.card p.sum{font-size:14px;line-height:1.55;color:var(--muted);margin-top:8px}
+.linksHead{font-size:12px;font-weight:700;color:var(--muted);margin:14px 0 8px}
+.linkRow{
+  display:flex;align-items:center;gap:11px;padding:10px 12px;border:1px solid var(--line);
+  border-radius:10px;margin-top:8px;background:var(--panel2)
+}
+.linkRow .ic{flex:none;width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;background:rgba(53,208,192,.12);border:1px solid rgba(53,208,192,.3)}
+.linkRow .tx{min-width:0;flex:1}
+.linkRow .t{font-size:13.5px;font-weight:600;line-height:1.3}
+.linkRow .s{font-size:12px;color:var(--muted);margin-top:2px}
+.linkRow.soon .ic{background:rgba(242,179,61,.1);border-color:rgba(242,179,61,.35)}
+.badge{display:inline-block;font-size:10px;font-weight:700;border-radius:5px;padding:2px 6px;margin-left:6px;vertical-align:middle;background:rgba(242,179,61,.15);color:var(--gold);border:1px solid rgba(242,179,61,.35)}
+
+/* ---------- reactions ---------- */
+#reactBar{
+  display:flex;gap:8px;align-items:center;justify-content:space-between;
+  margin-top:14px;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:7px
+}
+.rBtn{font-size:21px;width:46px;height:40px;border-radius:999px;display:flex;align-items:center;justify-content:center;transition:transform .12s}
+.rBtn:active{transform:scale(1.35);background:rgba(255,255,255,.08)}
+.vSep{width:1px;height:24px;background:var(--line)}
+.vBtn{display:flex;align-items:center;gap:6px;font-size:17px;border-radius:999px;padding:5px 11px;border:1px solid transparent}
+.vBtn span{font-size:12.5px;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums}
+.vBtn.sel{border-color:var(--gold);background:rgba(242,179,61,.12)}
+#floatLayer{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:60}
+.fEmoji{position:absolute;bottom:110px;font-size:30px;animation:rise 2.6s ease-out forwards}
+@keyframes rise{
+  0%{transform:translateY(0) scale(.7);opacity:0}
+  12%{opacity:1}
+  100%{transform:translateY(-62vh) translateX(var(--dx,0)) scale(1.25);opacity:0}
+}
+@media (prefers-reduced-motion: reduce){
+  .fEmoji{animation:fadeOnly 1.2s ease-out forwards}
+  @keyframes fadeOnly{0%{opacity:.9}100%{opacity:0}}
+  .chip.live .dot{animation:none}
+}
+
+/* ---------- papers / about ---------- */
+.secT{font-size:19px;font-weight:800;margin:18px 2px 4px;text-wrap:balance}
+.secS{font-size:13px;color:var(--muted);margin:0 2px 12px;line-height:1.5}
+.pCard{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:14px;margin-top:10px;display:block;color:var(--text)}
+.pCard:hover{text-decoration:none;border-color:#33507F}
+.pCard .where{font-size:11.5px;font-weight:700;color:var(--teal);letter-spacing:.04em}
+.pCard .where.soon{color:var(--gold)}
+.pCard h3{font-size:14.5px;font-weight:600;line-height:1.35;margin-top:5px}
+.pCard .auth{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.45}
+.pCard .doi{font-size:12px;color:var(--teal);margin-top:7px;word-break:break-all}
+.pFind{font-size:13px;line-height:1.5;color:var(--text);margin-top:9px;padding-left:10px;border-left:2px solid var(--coral)}
+
+.meCard{display:flex;gap:14px;align-items:center;margin-top:12px}
+.meCard img{width:74px;height:74px;border-radius:50%;object-fit:cover;border:2px solid var(--teal);flex:none}
+.meCard .nm{font-size:17px;font-weight:800}
+.meCard .rl{font-size:12.5px;color:var(--muted);line-height:1.45;margin-top:3px}
+.tl{margin-top:4px}
+.tlRow{display:flex;gap:12px;padding:9px 2px;border-bottom:1px solid var(--line)}
+.tlRow:last-child{border-bottom:none}
+.tlRow .yr{flex:none;width:44px;font-size:13px;font-weight:800;color:var(--coral);font-variant-numeric:tabular-nums}
+.tlRow .wh{font-size:13px;line-height:1.45}
+.tlRow .wh b{font-weight:600}
+.tlRow .wh .pl{color:var(--muted)}
+.statRow{display:flex;gap:10px;margin-top:12px}
+.stat{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;text-align:center}
+.stat .n{font-size:22px;font-weight:800;color:var(--coral);font-variant-numeric:tabular-nums}
+.stat .l{font-size:11px;color:var(--muted);margin-top:3px;line-height:1.3}
+.tagWrap{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+.tag{font-size:12px;border:1px solid var(--line);border-radius:999px;padding:5px 11px;color:var(--muted)}
+
+/* ---------- Q&A ---------- */
+#qaForm{display:flex;flex-direction:column;gap:9px;margin-top:12px}
+#qaForm textarea,#qaForm input{
+  background:var(--panel);border:1px solid var(--line);border-radius:11px;color:var(--text);
+  font-family:inherit;font-size:14px;padding:11px;width:100%;resize:vertical
+}
+#qaForm textarea{min-height:72px}
+#qaSend{background:var(--coral);color:#fff;font-weight:700;font-size:14px;border-radius:11px;padding:12px;text-align:center}
+#qaSend:disabled{opacity:.5}
+#qaNote{font-size:12.5px;color:var(--muted);line-height:1.5;margin-top:10px}
+.qItem{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:9px}
+.qItem .qt{font-size:14px;line-height:1.45}
+.qItem .qm{font-size:11.5px;color:var(--muted);margin-top:6px}
+
+/* ---------- share ---------- */
+#qrBox{display:flex;justify-content:center;background:#fff;border-radius:14px;padding:18px;margin-top:12px}
+#copyB{display:block;width:100%;margin-top:12px;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:12px;font-size:14px;font-weight:600;text-align:center}
+
+/* ---------- tab bar ---------- */
+nav{
+  display:flex;border-top:1px solid var(--line);background:rgba(10,19,34,.92);backdrop-filter:blur(10px);
+  padding-bottom:env(safe-area-inset-bottom)
+}
+nav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 0 7px;color:var(--muted);font-size:10.5px;font-weight:600}
+nav button .i{font-size:19px;line-height:1}
+nav button.cur{color:var(--coral)}
+
+/* ---------- telão ---------- */
+body.telao #app{max-width:none}
+body.telao header,body.telao nav,body.telao #audMain{display:none}
+#telaoView{display:none}
+body.telao #telaoView{display:flex;flex-direction:column;height:100%;padding:2vh 2vw}
+#tStage{flex:1;display:flex;align-items:center;justify-content:center;min-height:0}
+#tStage img,#tStage video{max-width:100%;max-height:100%;width:auto;height:auto;border-radius:10px;box-shadow:0 20px 70px rgba(0,0,0,.6)}
+#tBar{display:flex;align-items:center;gap:18px;padding-top:1.6vh}
+#tQr{background:#fff;padding:8px;border-radius:10px;flex:none}
+#tTx{flex:1;min-width:0}
+#tTx .a{font-size:clamp(14px,1.6vw,22px);font-weight:800}
+#tTx .a em{font-style:normal;color:var(--coral)}
+#tTx .b{font-size:clamp(11px,1.1vw,15px);color:var(--muted);margin-top:4px}
+#tMeta{text-align:right;flex:none}
+#tMeta .pc{font-size:clamp(13px,1.4vw,19px);font-weight:800;color:var(--teal);font-variant-numeric:tabular-nums}
+#tMeta .pl{font-size:clamp(10px,1vw,13px);color:var(--muted)}
+#tMeta .pg{font-size:clamp(11px,1.1vw,14px);color:var(--muted);margin-top:5px;font-variant-numeric:tabular-nums}
+
+/* ---------- presenter ---------- */
+#presPanel{display:none;margin-top:14px}
+body.presenter #presPanel{display:block}
+#presPanel .card{border-color:rgba(255,77,94,.4)}
+#presStatus{font-size:13px;line-height:1.5;color:var(--muted)}
+#presGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:12px}
+#presGrid button{background:var(--panel2);border:1px solid var(--line);border-radius:11px;padding:14px;font-size:15px;font-weight:700}
+#presGrid button:active{border-color:var(--coral)}
+
+@media (min-width:700px){
+  .brand h1{font-size:17px}
+  #stageWrap img,#stageWrap video{aspect-ratio:16/9}
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header>
+    <div class="brand">
+      <div class="ev" id="evLine">MEET NOVA'S NEW TALENTS · 18 NOV 2026 · LISBON</div>
+      <h1>Pocket-sized genomics to <em>end HIV by 2030</em></h1>
+    </div>
+    <div class="chip" id="liveChip"><span class="dot"></span><span id="liveChipTx">offline</span></div>
+    <button id="langBtn" aria-label="Mudar idioma / Switch language">PT</button>
+  </header>
+
+  <main id="audMain">
+
+    <!-- ========== TALK VIEW ========== -->
+    <section class="view on" id="view-talk">
+      <div id="stageWrap" aria-label="Slide">
+        <div id="stageMedia"></div>
+        <div id="slideTag">1 / 11</div>
+        <div id="liveTag">● <span data-i="onScreen">on screen now</span></div>
+        <button class="navArr" id="prevB" aria-label="Previous slide">‹</button>
+        <button class="navArr" id="nextB" aria-label="Next slide">›</button>
+      </div>
+
+      <div class="ctrlRow">
+        <div id="prog">1 / 11</div>
+        <div id="dots" role="tablist"></div>
+        <button id="followB">⟲ <span data-i="backLive">back to live</span></button>
+      </div>
+
+      <div id="thumbs"></div>
+
+      <div class="card" id="infoCard">
+        <div class="kicker" id="iKicker"></div>
+        <h2 id="iTitle"></h2>
+        <p class="sum" id="iSum"></p>
+        <div id="iLinks"></div>
+      </div>
+
+      <div id="reactBar" aria-label="Reactions">
+        <button class="rBtn" data-e="👏">👏</button>
+        <button class="rBtn" data-e="❤️">❤️</button>
+        <button class="rBtn" data-e="🔥">🔥</button>
+        <button class="rBtn" data-e="🤯">🤯</button>
+        <div class="vSep"></div>
+        <button class="vBtn" id="voteUp">👍<span id="upN">0</span></button>
+        <button class="vBtn" id="voteDown">👎<span id="downN">0</span></button>
+      </div>
+
+      <div id="presPanel">
+        <div class="card">
+          <div class="kicker" data-i="presMode">PRESENTER MODE</div>
+          <p id="presStatus"></p>
+          <div id="presGrid">
+            <button id="pPrev">‹ <span data-i="pPrev">Previous</span></button>
+            <button id="pNext"><span data-i="pNext">Next</span> ›</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== PAPERS VIEW ========== -->
+    <section class="view" id="view-papers">
+      <h2 class="secT" data-i="papersT">Papers from this talk</h2>
+      <p class="secS" data-i="papersS">Everything cited on the slides, with direct links. Open-access where available.</p>
+      <div id="papersList"></div>
+      <h2 class="secT" data-i="resT">Data sources &amp; tools</h2>
+      <div id="resList"></div>
+    </section>
+
+    <!-- ========== ABOUT VIEW ========== -->
+    <section class="view" id="view-about">
+      <div class="card">
+        <div class="meCard">
+          <img src="assets/victor.jpg" alt="Victor Pimentel">
+          <div>
+            <div class="nm">Victor Pimentel, PhD</div>
+            <div class="rl" data-i="role">Assistant Researcher (FCT-Tenure) · IHMT, NOVA University Lisbon · GHTM</div>
+          </div>
+        </div>
+        <p class="sum" style="margin-top:12px" data-i="bio"></p>
+        <div class="linkRow" style="margin-top:12px">
+          <div class="ic">✉️</div>
+          <div class="tx">
+            <div class="t">victor.pimentel@ihmt.unl.pt</div>
+            <div class="s" data-i="mailS">Questions, collaborations, student supervision</div>
+          </div>
+        </div>
+        <div class="linkRow">
+          <div class="ic">🏛️</div>
+          <div class="tx">
+            <a class="t" href="https://www.ihmt.unl.pt" target="_blank" rel="noopener">IHMT · NOVA University Lisbon</a>
+            <div class="s" data-i="ihmtS">Institute of Hygiene and Tropical Medicine, since 1902</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="statRow">
+        <div class="stat"><div class="n">47</div><div class="l" data-i="stPapers">peer-reviewed papers</div></div>
+        <div class="stat"><div class="n">~600</div><div class="l" data-i="stSeq">patients sequenced in 4 PALOP countries</div></div>
+        <div class="stat"><div class="n">35k+</div><div class="l" data-i="stGen">genomes analysed on two continents</div></div>
+      </div>
+
+      <div class="card">
+        <div class="kicker" data-i="pathT">THE PATH TO NOVA</div>
+        <div class="tl" id="tlBox"></div>
+      </div>
+
+      <div class="card">
+        <div class="kicker" data-i="teamT">THE TEAM</div>
+        <p class="sum" data-i="teamS"></p>
+        <div class="tagWrap" id="teamTags"></div>
+      </div>
+
+      <div class="card">
+        <div class="kicker" data-i="fundT">SUPPORTED BY</div>
+        <div class="tagWrap">
+          <span class="tag">Horizon 2020 EuCARE</span><span class="tag">FCT</span>
+          <span class="tag">Gulbenkian</span><span class="tag">AREF</span><span class="tag">EuResist network</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== Q&A VIEW ========== -->
+    <section class="view" id="view-qa">
+      <h2 class="secT" data-i="qaT">Ask a question</h2>
+      <p class="secS" data-i="qaS">Send it during the talk — I'll answer live or find you afterwards.</p>
+      <form id="qaForm">
+        <textarea id="qaText" maxlength="400" required></textarea>
+        <input id="qaName" maxlength="60">
+        <button id="qaSend" type="submit" data-i="qaSend">Send question</button>
+      </form>
+      <p id="qaNote"></p>
+      <div id="qaList"></div>
+    </section>
+
+    <!-- ========== SHARE VIEW ========== -->
+    <section class="view" id="view-share">
+      <h2 class="secT" data-i="shT">Share this page</h2>
+      <p class="secS" data-i="shS">Point a phone camera at the code, or copy the link.</p>
+      <div id="qrBox"></div>
+      <button id="copyB" data-i="copy">Copy link</button>
+    </section>
+
+  </main>
+
+  <!-- ========== TELÃO ========== -->
+  <div id="telaoView">
+    <div id="tStage"><div id="tMedia"></div></div>
+    <div id="tBar">
+      <div id="tQr"></div>
+      <div id="tTx">
+        <div class="a">Pocket-sized genomics to <em>end HIV by 2030</em></div>
+        <div class="b" id="tHint">Scan to follow on your phone · slides, papers &amp; live reactions</div>
+      </div>
+      <div id="tMeta">
+        <div class="pc" id="tPeers">—</div>
+        <div class="pl" id="tPeersL">connected</div>
+        <div class="pg" id="tProg">1 / 11</div>
+      </div>
+    </div>
+  </div>
+
+  <nav id="tabBar">
+    <button data-v="talk" class="cur"><span class="i">🎬</span><span data-i="tbTalk">Talk</span></button>
+    <button data-v="papers"><span class="i">📄</span><span data-i="tbPapers">Papers</span></button>
+    <button data-v="qa"><span class="i">💬</span><span data-i="tbQa">Q&amp;A</span></button>
+    <button data-v="about"><span class="i">🧬</span><span data-i="tbAbout">About</span></button>
+    <button data-v="share"><span class="i">📲</span><span data-i="tbShare">Share</span></button>
+  </nav>
+
+</div>
+<div id="floatLayer" aria-hidden="true"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs2@0.0.2/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js"></script>
+<script>
+"use strict";
+/* ================= data ================= */
+const S = n => "assets/slide-" + String(n).padStart(2,"0") + ".jpg";
+const DOI = d => "https://doi.org/" + d;
+
+const SLIDES = [
+ {k:"WELCOME", t:"Pocket-sized genomics to end HIV by 2030",
+  sum:{en:"Science & Innovation Day 2026 · Meet NOVA's New Talents. IHMT-NOVA, since 1902 — one bridge to the 9 Portuguese-speaking countries.",
+       pt:"Science & Innovation Day 2026 · Meet NOVA's New Talents. IHMT-NOVA, desde 1902 — uma ponte para os 9 países de língua portuguesa."},
+  links:[{ic:"🏛️",t:"IHMT · NOVA University Lisbon",s:{en:"Host institution",pt:"Instituição anfitriã"},url:"https://www.ihmt.unl.pt"}]},
+ {k:"WHO I AM", t:"What brought me to NOVA",
+  sum:{en:"Rio de Janeiro → São Paulo → Lisbon → Oxford → FCT-Tenure at IHMT-NOVA. Where Europe, Africa and Latin America meet — in Portuguese.",
+       pt:"Rio de Janeiro → São Paulo → Lisboa → Oxford → FCT-Tenure no IHMT-NOVA. Onde a Europa, a África e a América Latina se encontram — em português."},
+  links:[]},
+ {k:"MY NETWORK", t:"One hub, three continents",
+  sum:{en:"PhD and MSc students supervised in Angola, Brazil, Mozambique and São Tomé; lab teams trained in portable MinION sequencing. Partners from Fiocruz to Oxford and the Stanford HIVdb consortium.",
+       pt:"Doutorandos e mestrandos orientados em Angola, Brasil, Moçambique e São Tomé; equipas de laboratório treinadas em sequenciação portátil MinION. Parceiros da Fiocruz a Oxford e ao consórcio Stanford HIVdb."},
+  links:[{ic:"🧬",t:"Stanford HIV Drug Resistance Database",s:{en:"The global reference we work with",pt:"A referência global com que trabalhamos"},url:"https://hivdb.stanford.edu"}]},
+ {k:"THE CHALLENGE", t:"Where HIV hits hardest, we are blind",
+  sum:{en:"40.8 M people live with HIV; 11.5% of adults in Mozambique. Few labs can genotype HIV, results arrive late, treatment is chosen blind. What if the sequencer fitted in your pocket?",
+       pt:"40,8 M de pessoas vivem com VIH; 11,5% dos adultos em Moçambique. Poucos laboratórios conseguem genotipar o VIH, os resultados chegam tarde, o tratamento é escolhido às cegas. E se o sequenciador coubesse no bolso?"},
+  links:[{ic:"🌍",t:"UNAIDS Global AIDS Update 2025",s:{en:"Source of the numbers on this slide",pt:"Fonte dos números deste slide"},url:"https://www.unaids.org"}]},
+ {k:"THE INNOVATION · BUILT FOR THE PALOP", t:"MARVEL: a pocket-sized HIV sequencing lab",
+  sum:{en:"One-step RT-PCR, 4 genes in 1 tube, 24 barcoded patients per MinION run, resistance to every drug class read in real time on a laptop — run by local teams, where the patients are.",
+       pt:"RT-PCR num passo, 4 genes em 1 tubo, 24 doentes por corrida MinION, resistência a todas as classes de fármacos lida em tempo real num portátil — operado por equipas locais, onde os doentes estão."},
+  links:[{ic:"📄",t:"MARVEL protocol · BMC Infectious Diseases (2024)",s:{en:"Sebastião, Pingarilho … Abecasis & Pimentel · open access",pt:"Sebastião, Pingarilho … Abecasis & Pimentel · acesso aberto"},url:DOI("10.1186/s12879-024-09803-1")}]},
+ {k:"IMPACT IN THE PALOP", t:"Evidence that changes first-line treatment",
+  sum:{en:"Angola: 22% pre-treatment resistance backs the switch to dolutegravir. Cabo Verde: K103N argues NNRTIs out of first line. Mozambique: lenacapavir susceptibility mapped — ready for long-acting drugs.",
+       pt:"Angola: 22% de resistência pré-tratamento sustenta a mudança para dolutegravir. Cabo Verde: K103N tira os NNRTI da primeira linha. Moçambique: suscetibilidade ao lenacapavir mapeada — pronto para fármacos de longa ação."},
+  links:[
+   {ic:"🇦🇴",t:"Angola · Scientific Reports (2024)",s:{en:"Pre-treatment resistance in Luanda",pt:"Resistência pré-tratamento em Luanda"},url:DOI("10.1038/s41598-024-66905-1")},
+   {ic:"🇨🇻",t:"Cabo Verde · Viruses (2024)",s:{en:"Resistance in newly diagnosed people",pt:"Resistência em pessoas recém-diagnosticadas"},url:DOI("10.3390/v16121953")},
+   {ic:"🇲🇿",t:"Mozambique · J Medical Virology (2025)",s:{en:"Lenacapavir susceptibility",pt:"Suscetibilidade ao lenacapavir"},url:DOI("10.1002/jmv.70317")}]},
+ {k:"THEN WE SCALED UP", t:"35,000+ genomes, two continents",
+  sum:{en:"Europe: 3,300 genomes from men who have sex with men — 28% carry resistance mutations; 8% of clusters cross borders. South America: 31,931 sequences — PrEP still works. Competing for the national prize at SPDIMC, Porto, 27 Nov.",
+       pt:"Europa: 3.300 genomas de homens que fazem sexo com homens — 28% com mutações de resistência; 8% dos clusters cruzam fronteiras. América do Sul: 31.931 sequências — a PrEP continua a funcionar. A concurso para o prémio nacional no SPDIMC, Porto, 27 nov."},
+  links:[
+   {ic:"🆕",t:"Europe MSM clusters · Scientific Reports (2026)",s:{en:"Valadas, Sebastião … Pimentel — just out; link soon",pt:"Valadas, Sebastião … Pimentel — recém-publicado; link em breve"},soon:true},
+   {ic:"📬",t:"South America · Lancet Regional Health – Americas",s:{en:"Queirós, Valadas … Pimentel — in submission",pt:"Queirós, Valadas … Pimentel — em submissão"},soon:true}]},
+ {k:"THE PLATFORMS · BUILT BY MY GROUP", t:"JAGUAR-HIV: watch transmission unfold",
+  sum:{en:"Routine tests in, early warnings out. Recorded from JAGUAR 1.8.4 — an example run with 202 public HIV-1 pol sequences and synthetic metadata. Press play ▶",
+       pt:"Testes de rotina entram, alertas precoces saem. Gravado do JAGUAR 1.8.4 — corrida de exemplo com 202 sequências públicas de pol de VIH-1 e metadados sintéticos. Carregue em play ▶"},
+  video:"assets/jaguar.mp4", links:[]},
+ {k:"THE PLATFORMS · BUILT BY MY GROUP", t:"ATLAS: watch a virus travel",
+  sum:{en:"From a tree file to a moving map in six steps: each glowing dot is a lineage jumping between places. MARVEL sequences → JAGUAR detects → ATLAS explains. Press play ▶",
+       pt:"De um ficheiro de árvore a um mapa animado em seis passos: cada ponto luminoso é uma linhagem a saltar entre lugares. MARVEL sequencia → JAGUAR deteta → ATLAS explica. Carregue em play ▶"},
+  video:"assets/atlas.mp4", links:[]},
+ {k:"IMPACT · UNAIDS 95-95-95 · SDG 3.3", t:"How we help end HIV by 2030",
+  sum:{en:"Diagnosed: clusters show where to test. On treatment: resistance data choose the right first drug. Suppressed: JAGUAR flags threats early. Drug resistance is the quiet threat to all three 95s — we make it visible.",
+       pt:"Diagnosticados: os clusters mostram onde testar. Em tratamento: os dados de resistência escolhem o fármaco certo. Suprimidos: o JAGUAR sinaliza ameaças cedo. A resistência é a ameaça silenciosa aos três 95 — nós tornamo-la visível."},
+  links:[{ic:"🎯",t:"UNAIDS 95-95-95 targets",s:{en:"The 2030 goal this work serves",pt:"A meta de 2030 que este trabalho serve"},url:"https://www.unaids.org"}]},
+ {k:"LET'S BUILD IT TOGETHER", t:"Every HIV test can be an early warning",
+  sum:{en:"Thank you! 47 peer-reviewed papers, a team across three continents, and room for new collaborators — come talk to me, or write to victor.pimentel@ihmt.unl.pt.",
+       pt:"Obrigado! 47 artigos revistos por pares, uma equipa em três continentes e espaço para novos colaboradores — venha falar comigo ou escreva para victor.pimentel@ihmt.unl.pt."},
+  links:[]}
+];
+
+const PAPERS = [
+ {w:"BMC INFECTIOUS DISEASES · 2024 · OPEN ACCESS",
+  t:"MARVEL — minimising the emergence and dissemination of HIV-1 drug resistance in Portuguese-speaking African Countries (PALOP): low-cost portable NGS platform for HIV-1 surveillance in Africa",
+  a:"Sebastião CS, Pingarilho M, Bathy J, … Abecasis AB, Pimentel V. · 2024;24:884",
+  f:{en:"The protocol behind the pocket lab: ~600 patients, 4 genes in 1 tube, 24 per MinION run.",pt:"O protocolo do laboratório de bolso: ~600 doentes, 4 genes em 1 tubo, 24 por corrida MinION."},
+  d:"10.1186/s12879-024-09803-1"},
+ {w:"SCIENTIFIC REPORTS · 2024 · OPEN ACCESS",
+  t:"HIV-1 diversity and pre-treatment drug resistance in the era of integrase inhibitor among newly diagnosed ART-naïve adult patients in Luanda, Angola",
+  a:"Sebastião CS, Abecasis AB, … Morais J, Pimentel V. · 2024;14:15893",
+  f:{en:"22% pre-treatment resistance, mostly NNRTIs; no major integrase mutations — backs the national switch to dolutegravir.",pt:"22% de resistência pré-tratamento, sobretudo NNRTI; sem mutações major de integrase — sustenta a mudança nacional para dolutegravir."},
+  d:"10.1038/s41598-024-66905-1"},
+ {w:"VIRUSES · 2024 · OPEN ACCESS",
+  t:"Genetic Diversity and Antiretroviral Resistance in HIV-1-Infected Patients Newly Diagnosed in Cabo Verde",
+  a:"Leal SDV, Pimentel V, Gonçalves P, … Pingarilho M, Abecasis AB. · 2024;16:1953",
+  f:{en:"High frequency of K103N in newly diagnosed people — NNRTIs should leave first-line regimens.",pt:"Alta frequência de K103N em recém-diagnosticados — os NNRTI devem sair da primeira linha."},
+  d:"10.3390/v16121953"},
+ {w:"JOURNAL OF MEDICAL VIROLOGY · 2025 · OPEN ACCESS",
+  t:"Susceptibility to Lenacapavir Among Newly Diagnosed HIV-Positive Patients Followed Up in Mozambique That Presented With Primary Antiretroviral Resistance to Other Classes",
+  a:"Sebastião CS, Bathy J, Nhampossa T, … Abecasis AB, Pimentel V. · 2025;97:e70317",
+  f:{en:"No lenacapavir resistance mutations found — Mozambique is ready for long-acting drugs.",pt:"Sem mutações de resistência ao lenacapavir — Moçambique está pronto para fármacos de longa ação."},
+  d:"10.1002/jmv.70317"},
+ {w:"SCIENTIFIC REPORTS · 2026 · JUST PUBLISHED", soon:true,
+  t:"HIV-1 drug resistance transmission cluster dynamics among men who have sex with men across Europe",
+  a:"Valadas B*, Sebastião CS*, … Abecasis AB, Pimentel V.",
+  f:{en:"3,300 genomes: 28% carry resistance mutations; 8% of transmission clusters cross regional borders. Link available soon — ask me for the PDF.",pt:"3.300 genomas: 28% com mutações de resistência; 8% dos clusters cruzam fronteiras. Link em breve — peça-me o PDF."}},
+ {w:"LANCET REGIONAL HEALTH – AMERICAS · IN SUBMISSION", soon:true,
+  t:"HIV-1 molecular epidemiology in South America: 31,931 sequences, subtypes B, C and F1",
+  a:"Queirós G*, Valadas B*, … Guimarães M, Sebastião CS, Pimentel V — with Fiocruz, UMC Utrecht, Erasmus MC, Tufts",
+  f:{en:"1,554 clusters still active after dolutegravir; 5.2% transmitted NRTI resistance — PrEP still works.",pt:"1.554 clusters ainda ativos após dolutegravir; 5,2% de resistência NRTI transmitida — a PrEP continua a funcionar."}}
+];
+
+const RESOURCES = [
+ {ic:"🧬",t:"Stanford HIV Drug Resistance Database",s:{en:"Resistance interpretation used across our studies",pt:"Interpretação de resistências usada nos nossos estudos"},url:"https://hivdb.stanford.edu"},
+ {ic:"🌍",t:"UNAIDS — data & the 95-95-95 targets",s:{en:"Global AIDS Update 2025 and country data",pt:"Global AIDS Update 2025 e dados por país"},url:"https://www.unaids.org"},
+ {ic:"🏛️",t:"IHMT · NOVA University Lisbon",s:{en:"Our home since 1902",pt:"A nossa casa desde 1902"},url:"https://www.ihmt.unl.pt"}
+];
+
+const TIMELINE = [
+ {y:2008,wh:"BSc Microbiology & Immunology · UFRJ",pl:"Rio de Janeiro"},
+ {y:2011,wh:"MSc Parasitology · Fiocruz",pl:"Rio de Janeiro"},
+ {y:2016,wh:"PhD Microbiology (Virology) · USP",pl:"São Paulo"},
+ {y:2017,wh:"Postdoc IHMT-NOVA · Oxford visiting researcher (2019)",pl:"Lisbon"},
+ {y:2025,wh:"FCT-Tenure — permanent staff at IHMT-NOVA",pl:"Lisbon"}
+];
+const TEAM = ["Victor Pimentel","Beatriz Valadas","Zizhen Tang","Cruz Sebastião","Elisangela Bonfim","Barbara Pocongo","Eirini Hadjioannou"];
+
+/* ================= i18n ================= */
+const I18N = {
+ en:{onScreen:"on screen now", backLive:"back to live", presMode:"PRESENTER MODE", pPrev:"Previous", pNext:"Next",
+  papersT:"Papers from this talk", papersS:"Everything cited on the slides, with direct links. Open-access where available.",
+  resT:"Data sources & tools",
+  role:"Assistant Researcher (FCT-Tenure) · IHMT, NOVA University Lisbon · GHTM",
+  bio:"I build portable genomic surveillance for HIV: sequencing that runs where the patients are, and software that turns routine tests into early warnings. My science travels from a Lisbon lab to clinics in Luanda, Maputo and Rio — and comes back as evidence for policy.",
+  mailS:"Questions, collaborations, student supervision", ihmtS:"Institute of Hygiene and Tropical Medicine, since 1902",
+  stPapers:"peer-reviewed papers", stSeq:"patients sequenced in 4 PALOP countries", stGen:"genomes analysed on two continents",
+  pathT:"THE PATH TO NOVA", teamT:"THE TEAM",
+  teamS:"The people behind MARVEL, JAGUAR and ATLAS — across Lisbon, Luanda, Maputo, São Tomé and Rio.",
+  fundT:"SUPPORTED BY",
+  qaT:"Ask a question", qaS:"Send it during the talk — I'll answer live or find you afterwards.",
+  qaSend:"Send question", qaPh:"Your question…", qaNamePh:"Your name (optional)",
+  qaOffline:"Live questions aren't available on this connection — come talk to me after the session, or write to victor.pimentel@ihmt.unl.pt.",
+  qaSent:"Sent — thank you!", qaErr:"Couldn't send. Ask me in person, or write to victor.pimentel@ihmt.unl.pt.",
+  shT:"Share this page", shS:"Point a phone camera at the code, or copy the link.", copy:"Copy link", copied:"Link copied ✓",
+  tbTalk:"Talk", tbPapers:"Papers", tbQa:"Q&A", tbAbout:"About", tbShare:"Share",
+  live:"LIVE", offline:"offline", connected:"connected", browsing:"browsing freely",
+  presOn:"You're live: changing slides here changes them on every phone that follows along. Keep this #presenter link to yourself.",
+  presOff:"Connecting to the live channel… If this message stays, slides here change only on this screen.",
+  tHint:"Scan to follow on your phone · slides, papers & live reactions", tConn:"connected",
+  evLine:"MEET NOVA'S NEW TALENTS · 18 NOV 2026 · LISBON"},
+ pt:{onScreen:"em exibição agora", backLive:"voltar ao vivo", presMode:"MODO APRESENTADOR", pPrev:"Anterior", pNext:"Seguinte",
+  papersT:"Artigos desta apresentação", papersS:"Tudo o que é citado nos slides, com links diretos. Acesso aberto sempre que disponível.",
+  resT:"Fontes de dados e ferramentas",
+  role:"Investigador Auxiliar (FCT-Tenure) · IHMT, Universidade NOVA de Lisboa · GHTM",
+  bio:"Construo vigilância genómica portátil para o VIH: sequenciação que corre onde os doentes estão, e software que transforma testes de rotina em alertas precoces. A minha ciência viaja de um laboratório em Lisboa para clínicas em Luanda, Maputo e Rio — e volta como evidência para políticas de saúde.",
+  mailS:"Perguntas, colaborações, orientação de estudantes", ihmtS:"Instituto de Higiene e Medicina Tropical, desde 1902",
+  stPapers:"artigos revistos por pares", stSeq:"doentes sequenciados em 4 PALOP", stGen:"genomas analisados em dois continentes",
+  pathT:"O CAMINHO ATÉ À NOVA", teamT:"A EQUIPA",
+  teamS:"As pessoas por trás do MARVEL, JAGUAR e ATLAS — entre Lisboa, Luanda, Maputo, São Tomé e Rio.",
+  fundT:"COM O APOIO DE",
+  qaT:"Faça uma pergunta", qaS:"Envie durante a palestra — respondo ao vivo ou procuro-o no fim.",
+  qaSend:"Enviar pergunta", qaPh:"A sua pergunta…", qaNamePh:"O seu nome (opcional)",
+  qaOffline:"As perguntas ao vivo não estão disponíveis nesta ligação — fale comigo no fim da sessão ou escreva para victor.pimentel@ihmt.unl.pt.",
+  qaSent:"Enviada — obrigado!", qaErr:"Não foi possível enviar. Fale comigo pessoalmente ou escreva para victor.pimentel@ihmt.unl.pt.",
+  shT:"Partilhe esta página", shS:"Aponte a câmara do telemóvel ao código, ou copie o link.", copy:"Copiar link", copied:"Link copiado ✓",
+  tbTalk:"Palestra", tbPapers:"Artigos", tbQa:"Q&A", tbAbout:"Sobre", tbShare:"Partilhar",
+  live:"AO VIVO", offline:"offline", connected:"ligados", browsing:"a navegar livre",
+  presOn:"Está em direto: mudar de slide aqui muda em todos os telemóveis que estiverem a acompanhar. Guarde o link #presenter só para si.",
+  presOff:"A ligar ao canal em direto… Se esta mensagem persistir, os slides aqui mudam apenas neste ecrã.",
+  tHint:"Aponte a câmara para acompanhar no telemóvel · slides, artigos e reações ao vivo", tConn:"ligados",
+  evLine:"MEET NOVA'S NEW TALENTS · 18 NOV 2026 · LISBOA"}
+};
+let lang = "en";
+try{ lang = localStorage.getItem("ps-lang") || ((navigator.language||"").toLowerCase().startsWith("pt") ? "pt" : "en"); }catch(e){}
+
+function tr(k){ return (I18N[lang] && I18N[lang][k]) || I18N.en[k] || k; }
+function applyLang(){
+  document.documentElement.lang = lang;
+  document.querySelectorAll("[data-i]").forEach(el=>{ el.innerHTML = tr(el.getAttribute("data-i")); });
+  document.getElementById("langBtn").textContent = lang==="en" ? "PT" : "EN";
+  document.getElementById("qaText").placeholder = tr("qaPh");
+  document.getElementById("qaName").placeholder = tr("qaNamePh");
+  document.getElementById("tHint").innerHTML = tr("tHint");
+  document.getElementById("tPeersL").textContent = tr("tConn");
+  renderInfo(); renderPapers(); updateLiveChip();
+}
+
+/* ================= state ================= */
+let cur = 0, liveSlide = null, following = true, seen = new Set([0]);
+let room = null, db = null, canEmit = false, myVote = null;
+const peerSeen = {};  // peerId -> last reaction ts
+const isTelao = location.hash === "#telao";
+const isPres  = location.hash === "#presenter";
+if (isTelao) document.body.classList.add("telao");
+if (isPres)  document.body.classList.add("presenter");
+
+/* ===== live layer B: public MQTT broker (used on neutral hosting, where claude.* isn't available) ===== */
+const MQ_TOPIC = "nova-vp-glass-atlas-k7q2";
+const MQ_BROKERS = ["wss://broker.emqx.io:8084/mqtt","wss://broker.hivemq.com:8884/mqtt","wss://test.mosquitto.org:8081"];
+const myId = "u" + Math.random().toString(36).slice(2,10);
+let mq = null, mqOn = false;
+const mqPeers = {};           // id -> {ts, v}
+let lastFloat = 0;
+function mqttConnect(i){
+  i = i||0;
+  if (room || mqOn || typeof mqtt === "undefined" || i >= MQ_BROKERS.length) return;
+  let c, settled = false;
+  try{
+    c = mqtt.connect(MQ_BROKERS[i], {clientId:"psg_"+myId+"_"+i, connectTimeout:6000, keepalive:30, clean:true, reconnectPeriod:5000});
+  }catch(e){ return mqttConnect(i+1); }
+  const giveUp = setTimeout(()=>{ if(!settled){ settled=true; try{c.end(true);}catch(e){} mqttConnect(i+1); } }, 8000);
+  c.on("connect", ()=>{
+    if (mqOn) return;
+    settled = true; clearTimeout(giveUp);
+    mq = c; mqOn = true;
+    try{ c.subscribe(MQ_TOPIC+"/#"); }catch(e){}
+    mqHeartbeat(true);
+    if (isPres){ canEmit = true; setPresStatus(); mqSync(cur); }
+    updateLiveChip();
+  });
+  c.on("message", (t,msg)=>{ mqHandle(String(t).slice(MQ_TOPIC.length+1), msg); });
+  c.on("error", ()=>{ if(!settled){ settled=true; clearTimeout(giveUp); try{c.end(true);}catch(e){} mqttConnect(i+1); } });
+}
+function mqPub(ch,obj,retain){
+  if(!mqOn) return false;
+  try{ mq.publish(MQ_TOPIC+"/"+ch, JSON.stringify(obj), {qos:0, retain:!!retain}); return true; }
+  catch(e){ return false; }
+}
+let hbTimer=null;
+function mqHeartbeat(now){
+  if(!mqOn) return;
+  mqPub("hb",{id:myId, v:myVote||0, ts:Date.now()});
+  if(now){ clearInterval(hbTimer); hbTimer=setInterval(()=>mqHeartbeat(false),10000); }
+}
+function mqRecount(){
+  const nowT=Date.now(); let up=0,down=0,n=0;
+  for(const k in mqPeers){
+    if(nowT-mqPeers[k].ts>30000){ delete mqPeers[k]; continue; }
+    n++;
+    if(mqPeers[k].v==="up")up++; else if(mqPeers[k].v==="down")down++;
+  }
+  peerCount=n; peerVotes={up:up,down:down};
+  document.getElementById("tPeers").textContent=peerCount;
+  renderVotes(); updateLiveChip();
+}
+setInterval(()=>{ if(mqOn) mqRecount(); }, 8000);
+function mqHandle(ch,msg){
+  let d; try{ d=JSON.parse(msg.toString()); }catch(e){ return; }
+  if(!d) return;
+  if(ch==="hb" && d.id){ mqPeers[d.id]={ts:Date.now(), v:d.v}; mqRecount(); }
+  else if(ch==="react" && d.id!==myId){
+    const t=Date.now();
+    if(t-lastFloat>120){ lastFloat=t; floatEmoji(String(d.e||"👏").slice(0,8)); }
+  }
+  else if(ch==="sync" && !isPres && typeof d.slide==="number"){
+    if(!d.ts || (Date.now()-d.ts)<30*60*1000) onLiveSlide(d.slide);
+  }
+  else if(ch==="q" && d.text){
+    mqShowQ(d);
+    if((isPres||isTelao) && db) relayQuestion(d);
+  }
+}
+const mqQSeen={};
+function mqShowQ(q){
+  if(!q.id || mqQSeen[q.id]) return; mqQSeen[q.id]=1;
+  const nm = q.name? String(q.name).slice(0,60) : (lang==="pt"?"Anónimo":"Anonymous");
+  const el=document.createElement("div");
+  el.className="qItem";
+  el.innerHTML='<div class="qt">'+esc(String(q.text).slice(0,400))+'</div><div class="qm">'+esc(nm)+' · slide '+(parseInt(q.slide)||"?")+'</div>';
+  const list=document.getElementById("qaList");
+  list.insertBefore(el, list.firstChild);
+}
+function mqSync(i){ mqPub("sync",{slide:i, ts:Date.now(), id:myId}, true); }
+
+/* ================= stage ================= */
+const stageMedia = document.getElementById("stageMedia");
+const tMedia = document.getElementById("tMedia");
+function mediaHTML(i, telao){
+  const s = SLIDES[i], img = S(i+1);
+  if (s.video){
+    const auto = telao ? " autoplay loop" : "";
+    return '<video src="'+s.video+'" poster="'+img+'" controls muted playsinline preload="metadata"'+auto+'></video>';
+  }
+  return '<img src="'+img+'" alt="Slide '+(i+1)+': '+s.t.replace(/"/g,"&quot;")+'">';
+}
+function renderStage(){
+  stageMedia.innerHTML = mediaHTML(cur, false);
+  if (isTelao) tMedia.innerHTML = mediaHTML(cur, true);
+  document.getElementById("slideTag").textContent = (cur+1)+" / "+SLIDES.length;
+  document.getElementById("prog").textContent = (cur+1)+" / "+SLIDES.length;
+  document.getElementById("tProg").textContent = (cur+1)+" / "+SLIDES.length;
+  document.getElementById("liveTag").classList.toggle("on", liveSlide===cur);
+  document.querySelectorAll("#dots button").forEach((b,i)=>{
+    b.classList.toggle("cur", i===cur); b.classList.toggle("seen", i!==cur && seen.has(i));
+  });
+  document.querySelectorAll("#thumbs button").forEach((b,i)=> b.classList.toggle("cur", i===cur));
+  const tb = document.querySelectorAll("#thumbs button")[cur];
+  if (tb && tb.scrollIntoView) tb.scrollIntoView({block:"nearest", inline:"center", behavior:"smooth"});
+  renderInfo();
+  updateFollowBtn();
+}
+function renderInfo(){
+  const s = SLIDES[cur];
+  document.getElementById("iKicker").textContent = s.k;
+  document.getElementById("iTitle").textContent = s.t;
+  document.getElementById("iSum").textContent = s.sum[lang] || s.sum.en;
+  const box = document.getElementById("iLinks");
+  let h = "";
+  if (s.links.length){
+    h += '<div class="linksHead">'+(lang==="pt"?"LINKS CITADOS NESTE SLIDE":"LINKS CITED ON THIS SLIDE")+'</div>';
+    s.links.forEach(l=>{
+      const inner = '<div class="ic">'+l.ic+'</div><div class="tx"><div class="t">'+l.t+(l.soon?'<span class="badge">'+(lang==="pt"?"EM BREVE":"SOON")+'</span>':'')+'</div><div class="s">'+(l.s[lang]||l.s.en)+'</div></div>';
+      h += l.url
+        ? '<a class="linkRow" href="'+l.url+'" target="_blank" rel="noopener">'+inner+'</a>'
+        : '<div class="linkRow soon">'+inner+'</div>';
+    });
+  }
+  box.innerHTML = h;
+}
+function goto(i, user){
+  if (i<0 || i>=SLIDES.length) return;
+  cur = i; seen.add(i);
+  if (user && liveSlide!==null && liveSlide!==i) following = false;
+  renderStage();
+}
+document.getElementById("prevB").addEventListener("click",()=>goto(cur-1,true));
+document.getElementById("nextB").addEventListener("click",()=>goto(cur+1,true));
+document.addEventListener("keydown",e=>{
+  if (e.target.tagName==="TEXTAREA"||e.target.tagName==="INPUT") return;
+  if (e.key==="ArrowLeft") presOrGo(cur-1);
+  if (e.key==="ArrowRight"||e.key===" ") { presOrGo(cur+1); if(e.key===" ") e.preventDefault(); }
+});
+/* swipe */
+(function(){
+  let x0=null,y0=null;
+  const w = document.getElementById("stageWrap");
+  w.addEventListener("touchstart",e=>{x0=e.touches[0].clientX;y0=e.touches[0].clientY;},{passive:true});
+  w.addEventListener("touchend",e=>{
+    if(x0===null)return;
+    const dx=e.changedTouches[0].clientX-x0, dy=e.changedTouches[0].clientY-y0;
+    if(Math.abs(dx)>48 && Math.abs(dx)>Math.abs(dy)*1.5) presOrGo(cur+(dx<0?1:-1));
+    x0=null;
+  },{passive:true});
+})();
+
+/* dots & thumbs */
+(function(){
+  const d=document.getElementById("dots"), t=document.getElementById("thumbs");
+  SLIDES.forEach((s,i)=>{
+    const b=document.createElement("button");
+    b.setAttribute("aria-label","Slide "+(i+1)); b.addEventListener("click",()=>presOrGo(i));
+    d.appendChild(b);
+    const tb=document.createElement("button");
+    tb.innerHTML='<img src="'+S(i+1)+'" alt="" loading="lazy">';
+    tb.setAttribute("aria-label","Slide "+(i+1));
+    tb.addEventListener("click",()=>presOrGo(i));
+    t.appendChild(tb);
+  });
+})();
+
+/* follow the presenter */
+function updateFollowBtn(){
+  const b=document.getElementById("followB");
+  b.classList.toggle("show", liveSlide!==null && !following && liveSlide!==cur);
+}
+document.getElementById("followB").addEventListener("click",()=>{
+  following=true;
+  if(liveSlide!==null) goto(liveSlide,false);
+});
+function onLiveSlide(n){
+  if (typeof n!=="number" || n<0 || n>=SLIDES.length) return;
+  liveSlide = n;
+  markLive(true);
+  if (isTelao || following) goto(n,false); else renderStage();
+}
+
+/* ================= live chip ================= */
+let liveTimer=null, liveOn=false;
+function markLive(active){
+  if (active){ liveOn=true; clearTimeout(liveTimer); liveTimer=setTimeout(()=>{liveOn=false;updateLiveChip();}, 5*60*1000); }
+  updateLiveChip();
+}
+function updateLiveChip(){
+  const c=document.getElementById("liveChip"), tx=document.getElementById("liveChipTx");
+  if (liveOn){ c.classList.add("live"); tx.textContent = tr("live"); }
+  else if (room||mqOn){ c.classList.remove("live"); tx.textContent = tr("connected")+(peerCount?" · "+peerCount:""); }
+  else { c.classList.remove("live"); tx.textContent = tr("offline"); }
+}
+
+/* ================= reactions ================= */
+const layer=document.getElementById("floatLayer");
+function floatEmoji(e){
+  const el=document.createElement("div");
+  el.className="fEmoji";
+  el.textContent=e;
+  el.style.left=(8+Math.random()*84)+"%";
+  el.style.setProperty("--dx",(Math.random()*60-30)+"px");
+  layer.appendChild(el);
+  setTimeout(()=>el.remove(),2700);
+}
+let myPresence={};
+function pushPresence(patch){
+  Object.assign(myPresence,patch);
+  if(room){ try{ room.presence(myPresence); }catch(e){} }
+}
+document.querySelectorAll(".rBtn").forEach(b=>{
+  b.addEventListener("click",()=>{
+    const e=b.getAttribute("data-e");
+    floatEmoji(e);
+    pushPresence({r:{e:e,t:Date.now()+"-"+Math.random().toString(36).slice(2,6)}});
+    mqPub("react",{id:myId,e:e});
+  });
+});
+function setVote(v){
+  myVote = (myVote===v)? null : v;
+  document.getElementById("voteUp").classList.toggle("sel",myVote==="up");
+  document.getElementById("voteDown").classList.toggle("sel",myVote==="down");
+  pushPresence({v:myVote});
+  mqHeartbeat(true);
+  renderVotes();
+}
+document.getElementById("voteUp").addEventListener("click",()=>setVote("up"));
+document.getElementById("voteDown").addEventListener("click",()=>setVote("down"));
+let peerCount=0, peerVotes={up:0,down:0};
+function renderVotes(){
+  let up=peerVotes.up, down=peerVotes.down;
+  if(!room && !mqOn){ up=(myVote==="up"?1:0); down=(myVote==="down"?1:0); }
+  document.getElementById("upN").textContent=up;
+  document.getElementById("downN").textContent=down;
+}
+function handlePeers(peers){
+  try{
+    const list = Array.isArray(peers)? peers : Object.keys(peers||{}).map(k=>({id:k,...(peers[k]||{})}));
+    peerCount = list.length;
+    let up=0,down=0;
+    list.forEach(p=>{
+      const st = p.state || p.presence || p;
+      const id = p.id || p.peerId || JSON.stringify(st).slice(0,24);
+      if (st && st.v==="up") up++;
+      if (st && st.v==="down") down++;
+      if (st && st.r && st.r.t && peerSeen[id]!==st.r.t){
+        const first = !(id in peerSeen);
+        peerSeen[id]=st.r.t;
+        if(!first) floatEmoji(String(st.r.e||"👏").slice(0,8));
+      }
+      if (st && st.q) relayQuestion(st.q);
+    });
+    peerVotes={up:up,down:down};
+    document.getElementById("tPeers").textContent=peerCount;
+    renderVotes(); updateLiveChip();
+  }catch(e){}
+}
+
+/* ================= presenter ================= */
+function presOrGo(i){
+  goto(i,true);
+  if(isPres && canEmit) broadcast(i);
+}
+function broadcast(i){
+  if(room){ try{ room.emit("sync",{slide:i,t:Date.now()}); }catch(e){} }
+  pushPresence({role:"presenter",slide:i});
+  if(db){ try{ db.doc("state/live").set({slide:i,t:Date.now()}).catch(()=>{}); }catch(e){} }
+  mqSync(i);
+  liveSlide=i; markLive(true); renderStage();
+}
+document.getElementById("pPrev").addEventListener("click",()=>presOrGo(cur-1));
+document.getElementById("pNext").addEventListener("click",()=>presOrGo(cur+1));
+function setPresStatus(){
+  document.getElementById("presStatus").textContent = canEmit? tr("presOn") : tr("presOff");
+}
+
+/* ================= tabs ================= */
+document.querySelectorAll("nav button").forEach(b=>{
+  b.addEventListener("click",()=>{
+    document.querySelectorAll("nav button").forEach(x=>x.classList.remove("cur"));
+    b.classList.add("cur");
+    const v=b.getAttribute("data-v");
+    document.querySelectorAll(".view").forEach(x=>x.classList.remove("on"));
+    document.getElementById("view-"+v).classList.add("on");
+    document.getElementById("audMain").scrollTop=0;
+  });
+});
+
+/* ================= papers / about render ================= */
+function renderPapers(){
+  const box=document.getElementById("papersList");
+  box.innerHTML = PAPERS.map(p=>{
+    const inner =
+      '<div class="where'+(p.soon?' soon':'')+'">'+p.w+'</div>'+
+      '<h3>'+p.t+'</h3>'+
+      '<div class="auth">'+p.a+'</div>'+
+      '<div class="pFind">'+(p.f[lang]||p.f.en)+'</div>'+
+      (p.d? '<div class="doi">doi.org/'+p.d+'</div>' : '');
+    return p.d
+      ? '<a class="pCard" href="'+DOI(p.d)+'" target="_blank" rel="noopener">'+inner+'</a>'
+      : '<div class="pCard">'+inner+'</div>';
+  }).join("");
+  document.getElementById("resList").innerHTML = RESOURCES.map(r=>
+    '<a class="linkRow" href="'+r.url+'" target="_blank" rel="noopener"><div class="ic">'+r.ic+'</div><div class="tx"><div class="t">'+r.t+'</div><div class="s">'+(r.s[lang]||r.s.en)+'</div></div></a>'
+  ).join("");
+}
+document.getElementById("tlBox").innerHTML = TIMELINE.map(r=>
+  '<div class="tlRow"><div class="yr">'+r.y+'</div><div class="wh"><b>'+r.wh+'</b> <span class="pl">· '+r.pl+'</span></div></div>'
+).join("");
+document.getElementById("teamTags").innerHTML = TEAM.map(n=>'<span class="tag">'+n+'</span>').join("");
+
+/* ================= Q&A ================= */
+let qaReady=false;
+const qaForm=document.getElementById("qaForm"), qaNote=document.getElementById("qaNote");
+qaForm.addEventListener("submit",async e=>{
+  e.preventDefault();
+  const txt=document.getElementById("qaText").value.trim();
+  if(!txt) return;
+  const btn=document.getElementById("qaSend"); btn.disabled=true;
+  const id="q"+Date.now()+Math.random().toString(36).slice(2,7);
+  const q={ text:txt.slice(0,400),
+            name:document.getElementById("qaName").value.trim().slice(0,60),
+            slide:cur+1, t:Date.now(), id:id };
+  let ok=false;
+  try{ if(db){ await db.collection("questions").doc(id).set(q); ok=true; } }catch(err){}
+  if(!ok && room){ pushPresence({q:q}); ok=true; } /* relayed: the presenter's page persists it */
+  if(!ok && mqOn){ ok=mqPub("q",q); }
+  if(!ok && !window.claude){
+    /* no live channel: hand the question to the mail app instead */
+    try{
+      const su=encodeURIComponent("Question · Pocket-sized genomics talk");
+      const bo=encodeURIComponent(q.text+(q.name? "\n\n— "+q.name : ""));
+      location.href="mailto:victor.pimentel@ihmt.unl.pt?subject="+su+"&body="+bo;
+      ok=true;
+    }catch(e){}
+  }
+  if(ok){ document.getElementById("qaText").value=""; qaNote.textContent=tr("qaSent"); }
+  else { qaNote.textContent=tr("qaErr"); }
+  btn.disabled=false;
+});
+/* owner pages (presenter / big screen) persist questions relayed via room presence */
+const qRelayed={};
+function relayQuestion(q){
+  if(!(isPres||isTelao) || !db || !q || !q.id || qRelayed[q.id]) return;
+  qRelayed[q.id]=1;
+  try{
+    db.collection("questions").doc(String(q.id).slice(0,40)).set({
+      text:String(q.text||"").slice(0,400), name:String(q.name||"").slice(0,60),
+      slide:q.slide||0, t:q.t||Date.now()
+    }).catch(()=>{});
+  }catch(e){}
+}
+function watchQuestions(){
+  if(!db) return;
+  try{
+    db.collection("questions").orderBy("t","desc").limit(30).onSnapshot(snap=>{
+      try{
+        const docs = snap && snap.docs ? snap.docs : (Array.isArray(snap)? snap : []);
+        document.getElementById("qaList").innerHTML = docs.map(d=>{
+          const q = d.data? d.data() : d;
+          if(!q || !q.text) return "";
+          const nm = q.name? String(q.name).slice(0,60) : (lang==="pt"?"Anónimo":"Anonymous");
+          return '<div class="qItem"><div class="qt">'+esc(String(q.text).slice(0,400))+'</div><div class="qm">'+esc(nm)+' · slide '+(q.slide||"?")+'</div></div>';
+        }).join("");
+        qaReady=true;
+      }catch(e){}
+    });
+  }catch(e){}
+}
+function esc(s){ return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+/* ================= share / QR ================= */
+function pageURL(){ return location.origin + location.pathname; }
+function makeQR(elId,size){
+  try{
+    const el=document.getElementById(elId); el.innerHTML="";
+    new QRCode(el,{text:pageURL(),width:size,height:size,correctLevel:QRCode.CorrectLevel.M});
+  }catch(e){}
+}
+makeQR("qrBox",200);
+if(isTelao) makeQR("tQr", Math.max(110, Math.round(window.innerHeight*0.14)));
+document.getElementById("copyB").addEventListener("click",()=>{
+  const b=document.getElementById("copyB");
+  try{
+    navigator.clipboard.writeText(pageURL()).then(
+      ()=>{b.textContent=tr("copied"); setTimeout(()=>{b.textContent=tr("copy");},1800);},
+      ()=>{ b.textContent=pageURL(); }
+    );
+  }catch(e){ b.textContent=pageURL(); }
+});
+
+/* ================= language ================= */
+document.getElementById("langBtn").addEventListener("click",()=>{
+  lang = lang==="en"?"pt":"en";
+  try{ localStorage.setItem("ps-lang",lang); }catch(e){}
+  applyLang(); setPresStatus();
+});
+
+/* ================= live wiring ================= */
+qaNote.textContent = tr("qaOffline");
+async function connect(){
+  if(!(window.claude && window.claude.use)){ mqttConnect(0); return; }
+  try{
+    const r = await claude.use("room");
+    if(r){
+      room=r;
+      try{
+        room.on("sync",d=>{ if(d && typeof d.slide==="number") onLiveSlide(d.slide); });
+      }catch(e){}
+      try{ room.onPeers(handlePeers); }catch(e){}
+      pushPresence({hi:1});
+      if(isPres){
+        try{ await room.emit("sync",{slide:cur,t:Date.now()}); canEmit=true; }
+        catch(e){ canEmit=false; }
+        setPresStatus();
+        if(canEmit) broadcast(cur);
+      }
+      updateLiveChip();
+    }
+  }catch(e){}
+  try{
+    const d = await claude.use("db");
+    if(d){
+      db=d;
+      qaNote.textContent="";
+      try{
+        const doc = await Promise.race([
+          db.doc("state/live").get(),
+          new Promise(res=>setTimeout(()=>res(null),10000))
+        ]);
+        const data = doc && doc.data ? doc.data() : doc;
+        if(data && typeof data.slide==="number" && !isPres
+           && data.t && (Date.now()-data.t) < 30*60*1000) onLiveSlide(data.slide);
+      }catch(e){}
+      watchQuestions();
+    }
+  }catch(e){}
+  if(!room) mqttConnect(0); /* signed-out viewer on claude hosting: try the public channel */
+}
+setPresStatus();
+window.addEventListener("hashchange",()=>location.reload());
+renderStage(); applyLang();
+connect();
+</script>
+</body>
+</html>
