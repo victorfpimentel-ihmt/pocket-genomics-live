@@ -128,6 +128,10 @@ main{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;p
   12%{opacity:1}
   100%{transform:translateY(-62vh) translateX(var(--dx,0)) scale(1.25);opacity:0}
 }
+body.telao .fEmoji{font-size:clamp(44px,5.2vw,84px);bottom:16vh}
+#tTally{display:flex;gap:clamp(10px,1.4vw,22px);justify-content:flex-end;margin-bottom:6px}
+#tTally span{font-size:clamp(14px,1.6vw,24px);font-weight:700;font-variant-numeric:tabular-nums;color:var(--text)}
+#tTally i{font-style:normal;margin-right:4px}
 @media (prefers-reduced-motion: reduce){
   .fEmoji{animation:fadeOnly 1.2s ease-out forwards}
   @keyframes fadeOnly{0%{opacity:.9}100%{opacity:0}}
@@ -165,18 +169,6 @@ main{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;p
 .tag{font-size:12px;border:1px solid var(--line);border-radius:999px;padding:5px 11px;color:var(--muted)}
 
 /* ---------- Q&A ---------- */
-#qaForm{display:flex;flex-direction:column;gap:9px;margin-top:12px}
-#qaForm textarea,#qaForm input{
-  background:var(--panel);border:1px solid var(--line);border-radius:11px;color:var(--text);
-  font-family:inherit;font-size:14px;padding:11px;width:100%;resize:vertical
-}
-#qaForm textarea{min-height:72px}
-#qaSend{background:var(--coral);color:#fff;font-weight:700;font-size:14px;border-radius:11px;padding:12px;text-align:center}
-#qaSend:disabled{opacity:.5}
-#qaNote{font-size:12.5px;color:var(--muted);line-height:1.5;margin-top:10px}
-.qItem{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:9px}
-.qItem .qt{font-size:14px;line-height:1.45}
-.qItem .qm{font-size:11.5px;color:var(--muted);margin-top:6px}
 
 /* ---------- share ---------- */
 #qrBox{display:flex;justify-content:center;background:#fff;border-radius:14px;padding:18px;margin-top:12px}
@@ -196,8 +188,9 @@ body.telao #app{max-width:none}
 body.telao header,body.telao nav,body.telao #audMain{display:none}
 #telaoView{display:none}
 body.telao #telaoView{display:flex;flex-direction:column;height:100%;padding:2vh 2vw}
-#tStage{flex:1;display:flex;align-items:center;justify-content:center;min-height:0}
-#tStage img,#tStage video{max-width:100%;max-height:100%;width:auto;height:auto;border-radius:10px;box-shadow:0 20px 70px rgba(0,0,0,.6)}
+#tStage{flex:1;display:flex;align-items:center;justify-content:center;min-height:0;min-width:0}
+#tMedia{width:100%;height:100%;display:flex;align-items:center;justify-content:center;min-height:0}
+#tStage img,#tStage video{max-width:100%;max-height:100%;width:auto;height:auto;aspect-ratio:auto;object-fit:contain;border-radius:10px;box-shadow:0 20px 70px rgba(0,0,0,.6)}
 #tBar{display:flex;align-items:center;gap:18px;padding-top:1.6vh}
 #tQr{background:#fff;padding:8px;border-radius:10px;flex:none}
 #tTx{flex:1;min-width:0}
@@ -347,19 +340,6 @@ body.presenter #presPanel{display:block}
       </div>
     </section>
 
-    <!-- ========== Q&A VIEW ========== -->
-    <section class="view" id="view-qa">
-      <h2 class="secT" data-i="qaT">Ask a question</h2>
-      <p class="secS" data-i="qaS">Send it during the talk — I'll answer live or find you afterwards.</p>
-      <form id="qaForm">
-        <textarea id="qaText" maxlength="400" required></textarea>
-        <input id="qaName" maxlength="60">
-        <button id="qaSend" type="submit" data-i="qaSend">Send question</button>
-      </form>
-      <p id="qaNote"></p>
-      <div id="qaList"></div>
-    </section>
-
     <!-- ========== SHARE VIEW ========== -->
     <section class="view" id="view-share">
       <h2 class="secT" data-i="shT">Share this page</h2>
@@ -380,6 +360,7 @@ body.presenter #presPanel{display:block}
         <div class="b" id="tHint">Scan to follow on your phone · slides, papers &amp; live reactions</div>
       </div>
       <div id="tMeta">
+        <div id="tTally"></div>
         <div class="pc" id="tPeers">—</div>
         <div class="pl" id="tPeersL">connected</div>
         <div class="pg" id="tProg">1 / 11</div>
@@ -390,7 +371,6 @@ body.presenter #presPanel{display:block}
   <nav id="tabBar">
     <button data-v="talk" class="cur"><span class="i">🎬</span><span data-i="tbTalk">Talk</span></button>
     <button data-v="papers"><span class="i">📄</span><span data-i="tbPapers">Papers</span></button>
-    <button data-v="qa"><span class="i">💬</span><span data-i="tbQa">Q&amp;A</span></button>
     <button data-v="about"><span class="i">🧬</span><span data-i="tbAbout">About</span></button>
     <button data-v="share"><span class="i">📲</span><span data-i="tbShare">Share</span></button>
   </nav>
@@ -516,12 +496,8 @@ const I18N = {
   pathT:"THE PATH TO NOVA", teamT:"THE TEAM",
   teamS:"The people behind MARVEL, JAGUAR and ATLAS — across Lisbon, Luanda, Maputo, São Tomé and Rio.",
   fundT:"SUPPORTED BY",
-  qaT:"Ask a question", qaS:"Send it during the talk — I'll answer live or find you afterwards.",
-  qaSend:"Send question", qaPh:"Your question…", qaNamePh:"Your name (optional)",
-  qaOffline:"Live questions aren't available on this connection — come talk to me after the session, or write to victor.pimentel@ihmt.unl.pt.",
-  qaSent:"Sent — thank you!", qaErr:"Couldn't send. Ask me in person, or write to victor.pimentel@ihmt.unl.pt.",
   shT:"Share this page", shS:"Point a phone camera at the code, or copy the link.", copy:"Copy link", copied:"Link copied ✓",
-  tbTalk:"Talk", tbPapers:"Papers", tbQa:"Q&A", tbAbout:"About", tbShare:"Share",
+  tbTalk:"Talk", tbPapers:"Papers", tbAbout:"About", tbShare:"Share",
   live:"LIVE", offline:"offline", connected:"connected", browsing:"browsing freely",
   presOn:"You're live: changing slides here changes them on every phone that follows along. Keep this #presenter link to yourself.",
   presOff:"Connecting to the live channel… If this message stays, slides here change only on this screen.",
@@ -537,12 +513,8 @@ const I18N = {
   pathT:"O CAMINHO ATÉ À NOVA", teamT:"A EQUIPA",
   teamS:"As pessoas por trás do MARVEL, JAGUAR e ATLAS — entre Lisboa, Luanda, Maputo, São Tomé e Rio.",
   fundT:"COM O APOIO DE",
-  qaT:"Faça uma pergunta", qaS:"Envie durante a palestra — respondo ao vivo ou procuro-o no fim.",
-  qaSend:"Enviar pergunta", qaPh:"A sua pergunta…", qaNamePh:"O seu nome (opcional)",
-  qaOffline:"As perguntas ao vivo não estão disponíveis nesta ligação — fale comigo no fim da sessão ou escreva para victor.pimentel@ihmt.unl.pt.",
-  qaSent:"Enviada — obrigado!", qaErr:"Não foi possível enviar. Fale comigo pessoalmente ou escreva para victor.pimentel@ihmt.unl.pt.",
   shT:"Partilhe esta página", shS:"Aponte a câmara do telemóvel ao código, ou copie o link.", copy:"Copiar link", copied:"Link copiado ✓",
-  tbTalk:"Palestra", tbPapers:"Artigos", tbQa:"Q&A", tbAbout:"Sobre", tbShare:"Partilhar",
+  tbTalk:"Palestra", tbPapers:"Artigos", tbAbout:"Sobre", tbShare:"Partilhar",
   live:"AO VIVO", offline:"offline", connected:"ligados", browsing:"a navegar livre",
   presOn:"Está em direto: mudar de slide aqui muda em todos os telemóveis que estiverem a acompanhar. Guarde o link #presenter só para si.",
   presOff:"A ligar ao canal em direto… Se esta mensagem persistir, os slides aqui mudam apenas neste ecrã.",
@@ -557,8 +529,6 @@ function applyLang(){
   document.documentElement.lang = lang;
   document.querySelectorAll("[data-i]").forEach(el=>{ el.innerHTML = tr(el.getAttribute("data-i")); });
   document.getElementById("langBtn").textContent = lang==="en" ? "PT" : "EN";
-  document.getElementById("qaText").placeholder = tr("qaPh");
-  document.getElementById("qaName").placeholder = tr("qaNamePh");
   document.getElementById("tHint").innerHTML = tr("tHint");
   document.getElementById("tPeersL").textContent = tr("tConn");
   renderInfo(); renderPapers(); updateLiveChip();
@@ -629,26 +599,12 @@ function mqHandle(ch,msg){
   if(ch==="hb" && d.id){ mqPeers[d.id]={ts:Date.now(), v:d.v}; mqRecount(); }
   else if(ch==="react" && d.id!==myId){
     const t=Date.now();
+    tally(String(d.e||""));
     if(t-lastFloat>120){ lastFloat=t; floatEmoji(String(d.e||"👏").slice(0,8)); }
   }
   else if(ch==="sync" && !isPres && typeof d.slide==="number"){
     if(!d.ts || (Date.now()-d.ts)<30*60*1000) onLiveSlide(d.slide);
-  }
-  else if(ch==="q" && d.text){
-    mqShowQ(d);
-    if((isPres||isTelao) && db) relayQuestion(d);
-  }
-}
-const mqQSeen={};
-function mqShowQ(q){
-  if(!q.id || mqQSeen[q.id]) return; mqQSeen[q.id]=1;
-  const nm = q.name? String(q.name).slice(0,60) : (lang==="pt"?"Anónimo":"Anonymous");
-  const el=document.createElement("div");
-  el.className="qItem";
-  el.innerHTML='<div class="qt">'+esc(String(q.text).slice(0,400))+'</div><div class="qm">'+esc(nm)+' · slide '+(parseInt(q.slide)||"?")+'</div>';
-  const list=document.getElementById("qaList");
-  list.insertBefore(el, list.firstChild);
-}
+  }}
 function mqSync(i){ mqPub("sync",{slide:i, ts:Date.now(), id:myId}, true); }
 
 /* ================= stage ================= */
@@ -777,6 +733,15 @@ function floatEmoji(e){
   layer.appendChild(el);
   setTimeout(()=>el.remove(),2700);
 }
+
+/* running count of each reaction, shown on the big screen */
+const tallyN={"👏":0,"❤️":0,"🔥":0,"🤯":0};
+function tally(e){
+  if(!isTelao || !(e in tallyN)) return;
+  tallyN[e]++;
+  document.getElementById("tTally").innerHTML =
+    Object.keys(tallyN).map(k=>'<span><i>'+k+'</i>'+tallyN[k]+'</span>').join("");
+}
 let myPresence={};
 function pushPresence(patch){
   Object.assign(myPresence,patch);
@@ -820,9 +785,8 @@ function handlePeers(peers){
       if (st && st.r && st.r.t && peerSeen[id]!==st.r.t){
         const first = !(id in peerSeen);
         peerSeen[id]=st.r.t;
-        if(!first) floatEmoji(String(st.r.e||"👏").slice(0,8));
+        if(!first){ tally(String(st.r.e||"")); floatEmoji(String(st.r.e||"👏").slice(0,8)); }
       }
-      if (st && st.q) relayQuestion(st.q);
     });
     peerVotes={up:up,down:down};
     document.getElementById("tPeers").textContent=peerCount;
@@ -883,64 +847,6 @@ document.getElementById("tlBox").innerHTML = TIMELINE.map(r=>
 ).join("");
 document.getElementById("teamTags").innerHTML = TEAM.map(n=>'<span class="tag">'+n+'</span>').join("");
 
-/* ================= Q&A ================= */
-let qaReady=false;
-const qaForm=document.getElementById("qaForm"), qaNote=document.getElementById("qaNote");
-qaForm.addEventListener("submit",async e=>{
-  e.preventDefault();
-  const txt=document.getElementById("qaText").value.trim();
-  if(!txt) return;
-  const btn=document.getElementById("qaSend"); btn.disabled=true;
-  const id="q"+Date.now()+Math.random().toString(36).slice(2,7);
-  const q={ text:txt.slice(0,400),
-            name:document.getElementById("qaName").value.trim().slice(0,60),
-            slide:cur+1, t:Date.now(), id:id };
-  let ok=false;
-  try{ if(db){ await db.collection("questions").doc(id).set(q); ok=true; } }catch(err){}
-  if(!ok && room){ pushPresence({q:q}); ok=true; } /* relayed: the presenter's page persists it */
-  if(!ok && mqOn){ ok=mqPub("q",q); }
-  if(!ok && !window.claude){
-    /* no live channel: hand the question to the mail app instead */
-    try{
-      const su=encodeURIComponent("Question · Pocket-sized genomics talk");
-      const bo=encodeURIComponent(q.text+(q.name? "\n\n— "+q.name : ""));
-      location.href="mailto:victor.pimentel@ihmt.unl.pt?subject="+su+"&body="+bo;
-      ok=true;
-    }catch(e){}
-  }
-  if(ok){ document.getElementById("qaText").value=""; qaNote.textContent=tr("qaSent"); }
-  else { qaNote.textContent=tr("qaErr"); }
-  btn.disabled=false;
-});
-/* owner pages (presenter / big screen) persist questions relayed via room presence */
-const qRelayed={};
-function relayQuestion(q){
-  if(!(isPres||isTelao) || !db || !q || !q.id || qRelayed[q.id]) return;
-  qRelayed[q.id]=1;
-  try{
-    db.collection("questions").doc(String(q.id).slice(0,40)).set({
-      text:String(q.text||"").slice(0,400), name:String(q.name||"").slice(0,60),
-      slide:q.slide||0, t:q.t||Date.now()
-    }).catch(()=>{});
-  }catch(e){}
-}
-function watchQuestions(){
-  if(!db) return;
-  try{
-    db.collection("questions").orderBy("t","desc").limit(30).onSnapshot(snap=>{
-      try{
-        const docs = snap && snap.docs ? snap.docs : (Array.isArray(snap)? snap : []);
-        document.getElementById("qaList").innerHTML = docs.map(d=>{
-          const q = d.data? d.data() : d;
-          if(!q || !q.text) return "";
-          const nm = q.name? String(q.name).slice(0,60) : (lang==="pt"?"Anónimo":"Anonymous");
-          return '<div class="qItem"><div class="qt">'+esc(String(q.text).slice(0,400))+'</div><div class="qm">'+esc(nm)+' · slide '+(q.slide||"?")+'</div></div>';
-        }).join("");
-        qaReady=true;
-      }catch(e){}
-    });
-  }catch(e){}
-}
 function esc(s){ return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
 
 /* ================= share / QR ================= */
@@ -971,7 +877,6 @@ document.getElementById("langBtn").addEventListener("click",()=>{
 });
 
 /* ================= live wiring ================= */
-qaNote.textContent = tr("qaOffline");
 async function connect(){
   if(!(window.claude && window.claude.use)){ mqttConnect(0); return; }
   try{
@@ -996,7 +901,6 @@ async function connect(){
     const d = await claude.use("db");
     if(d){
       db=d;
-      qaNote.textContent="";
       try{
         const doc = await Promise.race([
           db.doc("state/live").get(),
@@ -1006,7 +910,6 @@ async function connect(){
         if(data && typeof data.slide==="number" && !isPres
            && data.t && (Date.now()-data.t) < 30*60*1000) onLiveSlide(data.slide);
       }catch(e){}
-      watchQuestions();
     }
   }catch(e){}
   if(!room) mqttConnect(0); /* signed-out viewer on claude hosting: try the public channel */
