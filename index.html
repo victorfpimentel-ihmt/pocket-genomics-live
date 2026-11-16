@@ -187,12 +187,12 @@ nav button.cur{color:var(--coral)}
 body.telao #app{max-width:none}
 body.telao header,body.telao nav,body.telao #audMain{display:none}
 #telaoView{display:none}
-body.telao #telaoView{display:flex;flex-direction:column;height:100%;padding:2vh 2vw}
+body.telao #telaoView{display:flex;flex-direction:column;height:100%;padding:2vh 2vw 2.5vh;box-sizing:border-box}
 #tStage{flex:1;display:flex;align-items:center;justify-content:center;min-height:0;min-width:0}
 #tMedia{width:100%;height:100%;display:flex;align-items:center;justify-content:center;min-height:0}
 #tStage img,#tStage video{max-width:100%;max-height:100%;width:auto;height:auto;aspect-ratio:auto;object-fit:contain;border-radius:10px;box-shadow:0 20px 70px rgba(0,0,0,.6)}
 #tBar{display:flex;align-items:center;gap:18px;padding-top:1.6vh}
-#tQr{background:#fff;padding:8px;border-radius:10px;flex:none}
+#tQr{background:#fff;padding:6px;border-radius:10px;flex:none;line-height:0}
 #tTx{flex:1;min-width:0}
 #tTx .a{font-size:clamp(14px,1.6vw,22px);font-weight:800}
 #tTx .a em{font-style:normal;color:var(--coral)}
@@ -880,7 +880,7 @@ function makeQR(elId,size){
   }catch(e){}
 }
 makeQR("qrBox",200);
-if(isTelao) makeQR("tQr", Math.max(110, Math.round(window.innerHeight*0.14)));
+if(isTelao) makeQR("tQr", Math.max(84, Math.round(window.innerHeight*0.095)));
 document.getElementById("copyB").addEventListener("click",()=>{
   const b=document.getElementById("copyB");
   try{
